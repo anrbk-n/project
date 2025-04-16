@@ -3,9 +3,12 @@ from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 from pipelines.v_download import run_pipeline
 from pipelines.subtitles import transcribe_youtube_with_punctuation
+from pathlib import Path
 
 app = FastAPI()
-templates = Jinja2Templates(directory="templates")
+
+BASE_DIR = Path(__file__).resolve().parent
+templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
 
 @app.get("/", response_class=HTMLResponse)
