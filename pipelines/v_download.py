@@ -16,6 +16,7 @@ def progress_hook(d):
 
 
 def download_with_progress(url, outtmpl, format_code):
+
     ydl_opts = {
         'format': format_code,
         'outtmpl': outtmpl,
@@ -33,9 +34,9 @@ def download_with_progress(url, outtmpl, format_code):
             return None
 
 
-def merge_video_audio(video_file, audio_file, output_file="dada.mp4", use_gpu=True):
+def merge_video_audio(video_file, audio_file, output_file="download_video.mp4", use_gpu=True):
     video_codec = "h264_nvenc" if use_gpu else "libx264"
-
+    
     command = [
         "ffmpeg", "-y",
         "-i", video_file,
@@ -45,15 +46,16 @@ def merge_video_audio(video_file, audio_file, output_file="dada.mp4", use_gpu=Tr
         "-c:a", "aac",
         "-b:a", "192k",
         "-movflags", "+faststart",
-        output_file
+        output_file  
     ]
-
+    
     result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-
+    
     if result.returncode != 0:
         print(result.stderr)
     else:
         cleanup_temp_files()
+
 
 
 def cleanup_temp_files():

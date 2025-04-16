@@ -5,6 +5,7 @@ from yt_dlp import YoutubeDL
 from deepmultilingualpunctuation import PunctuationModel
 
 
+
 def download_subtitles(url, preferred_langs=('ru', 'en')) -> str | None:
     ydl_opts_probe = {'quiet': True, 'skip_download': True}
 
@@ -66,7 +67,6 @@ def clean_and_deduplicate(vtt_path, output_txt="transcript.txt"):
     with open(output_txt, "w", encoding="utf-8") as f:
         f.write("\n".join(cleaned_lines))
 
-    print(f"✅ Чистый текст без повторов: {output_txt}")
     return output_txt
 
 
@@ -81,16 +81,13 @@ def postprocess_transcript(input_txt_path: str, output_txt_path: str = "transcri
     with open(output_txt_path, "w", encoding="utf-8") as f:
         f.write(punctuated)
 
-    print(f"🧠 Пунктуация восстановлена: {output_txt_path}")
     return output_txt_path
 
 
 def transcribe_youtube_with_punctuation(url: str) -> str:
-    print(f"🔗 Обработка субтитров для видео: {url}")
     vtt_file = download_subtitles(url)
 
     if not vtt_file:
-        print("❌ Субтитры не найдены.")
         return ""
 
     txt_clean = clean_and_deduplicate(vtt_file)
