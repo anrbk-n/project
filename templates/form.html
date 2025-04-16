@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>YouTube Processor</title>
+</head>
+<body>
+    <h1>🎬 Обработка YouTube-ссылки</h1>
+    <form method="post">
+        <label for="url">YouTube URL:</label><br>
+        <input type="text" id="url" name="url" size="80" required><br><br>
+        <input type="submit" value="Запустить">
+    </form>
+
+    {% if video %}
+        <h2>🎥 Готовое видео:</h2>
+        <video controls width="600">
+            <source src="/video/" type="video/mp4">
+            Ваш браузер не поддерживает video-тег.
+        </video>
+
+        <h2>📄 Субтитры:</h2>
+        <a href="/subtitles/" download>Скачать субтитры</a>
+    {% endif %}
+</body>
+</html>
