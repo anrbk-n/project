@@ -8,3 +8,6 @@ app/pipelines/__pycache__/v_download.cpython-312.pyc
 app/__pycache__/main.cpython-312.pyc
 pipelines/__pycache__/__init__.cpython-312.pyc
 __pycache__/main.cpython-312.pyc
+pipelines/.env
+pipelines/__pycache__/embedings.cpython-312.pyc
+pipelines/__pycache__/faiss.cpython-312.pyc
