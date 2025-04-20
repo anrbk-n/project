@@ -30,7 +30,6 @@ def download_with_progress(url, outtmpl, format_code):
             info = ydl.extract_info(url, download=True)
             return ydl.prepare_filename(info)
         except DownloadError as e:
-            print(f"❌ Ошибка загрузки: {e}")
             return None
 
 
