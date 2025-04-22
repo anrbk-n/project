@@ -1,13 +1,17 @@
-from huggingface_hub import InferenceClient
 import os
 from typing import List
+from openai import OpenAI
+from dotenv import load_dotenv
 
-TRANSCRIPT_PATH = "transcript_punctuated.txt"
+load_dotenv()
 
-client = InferenceClient(
-    model="mistralai/Mistral-7B-Instruct-v0.1",
-    token=os.getenv("token")  # экспортируй в .env
+client = OpenAI(
+    api_key=os.getenv("OPENAI_API_KEY"),
+    base_url="https://api.together.xyz/v1"
 )
+
+MODEL_NAME = "mistralai/Mistral-7B-Instruct-v0.1"
+TRANSCRIPT_PATH = "transcript_punctuated.txt"
 
 def load_transcript() -> str:
     if not os.path.exists(TRANSCRIPT_PATH):
@@ -18,7 +22,7 @@ def load_transcript() -> str:
 def ask_question(query: str) -> str:
     transcript = load_transcript()
     if not transcript:
-        return "⚠️ Транскрипт не найден."
+        return "Транскрипт не найден."
 
     prompt = (
         "Ты — интеллектуальный ассистент, который отвечает на вопросы строго по стенограмме видео. "
@@ -29,34 +33,47 @@ def ask_question(query: str) -> str:
     )
 
     try:
-        return client.text_generation(prompt, max_new_tokens=500, temperature=0.7)
+        response = client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.7,
+            max_tokens=500
+        )
+        return response.choices[0].message.content.strip()
     except Exception as e:
-        print(f"❌ Ошибка LLM: {e}")
-        return "❌ Ошибка при генерации ответа."
+        print(f"Ошибка Together API: {e}")
+        return "Ошибка при генерации ответа от модели."
 
 def generate_summary() -> str:
     transcript = load_transcript()
     if not transcript:
-        return "⚠️ Транскрипт не найден."
+        return "Транскрипт не найден."
 
     prompt = (
-        "Ты — ассистент, который составляет краткое содержание видео.\n"
-        "Сделай сжатый, информативный summary следующей стенограммы на русском языке:\n\n"
+        "Ты — интеллектуальный ассистент. Проанализируй стенограмму видео и составь краткое, логичное и информативное summary на русском языке."
+        "Не пересказывай всё дословно. Сконцентрируйся на ключевых идеях, важных терминах и выводах. Используй простой, но деловой стиль изложения.\n\n"
+        "Стенограмма:"
         f"{transcript}\n\n"
         "Summary:"
     )
 
     try:
-        return client.text_generation(prompt, max_new_tokens=700, temperature=0.7)
+        response = client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.7,
+            max_tokens=1000
+        )
+        return response.choices[0].message.content.strip()
     except Exception as e:
-        print(f"❌ Ошибка LLM: {e}")
-        return "❌ Ошибка при генерации summary."
+        print(f"Ошибка Together API: {e}")
+        return "Ошибка при генерации summary."
 
 def generate_timestamps(transcript: str = None) -> List[str]:
     if transcript is None:
         transcript = load_transcript()
     if not transcript:
-        return ["⚠️ Транскрипт не найден."]
+        return ["Транскрипт не найден."]
 
     paragraphs = transcript.split("\n")
     timestamps = []
