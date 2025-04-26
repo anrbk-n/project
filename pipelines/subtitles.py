@@ -28,7 +28,7 @@ def download_subtitles(url, preferred_langs=('ru', 'en')) -> str | None:
             is_auto = True
 
         if lang:
-            print(f"📥 Найдены {'авто' if is_auto else 'ручные'} субтитры: {lang}")
+            print(f"Найдены {'авто' if is_auto else 'ручные'} субтитры: {lang}")
             ydl_opts_download = {
                 'quiet': True,
                 'skip_download': True,
@@ -91,7 +91,17 @@ def transcribe_youtube_with_punctuation(url: str) -> str:
         return ""
 
     txt_clean = clean_and_deduplicate(vtt_file)
-    os.remove(vtt_file)
     txt_final = postprocess_transcript(txt_clean)
 
     return txt_final
+
+def save_last_url(url: str):
+    with open("last_url.txt", "w", encoding="utf-8") as f:
+        f.write(url)
+
+def load_last_url() -> str:
+    if os.path.exists("last_url.txt"):
+        with open("last_url.txt", "r", encoding="utf-8") as f:
+            return f.read().strip()
+    return ""
+
