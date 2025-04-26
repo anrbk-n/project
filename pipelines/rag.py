@@ -1,119 +1,95 @@
 import os
-from typing import List
-from openai import OpenAI
+import requests
 from dotenv import load_dotenv
 
 load_dotenv()
 
-client = OpenAI(
-    api_key=os.getenv("OPENAI_API_KEY"),
-    base_url="https://api.together.xyz/v1"
-)
+# --- API config ---
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
 
-MODEL_NAME = "mistralai/Mistral-7B-Instruct-v0.1"
 TRANSCRIPT_PATH = "transcript_punctuated.txt"
 
+# --- Call Gemini API with a prompt ---
+def gemini_generate(prompt: str) -> str:
+    headers = {"Content-Type": "application/json"}
+    params = {"key": GEMINI_API_KEY}
+    payload = {"contents": [{"parts": [{"text": prompt}]}]}
+
+    try:
+        response = requests.post(GEMINI_URL, headers=headers, params=params, json=payload)
+        response.raise_for_status()
+        return response.json()["candidates"][0]["content"]["parts"][0]["text"]
+    except Exception as e:
+        print(f"Gemini API error: {e}")
+        return "Error generating with Gemini"
+
+# --- Load transcript from file ---
 def load_transcript() -> str:
     if not os.path.exists(TRANSCRIPT_PATH):
         return ""
     with open(TRANSCRIPT_PATH, "r", encoding="utf-8") as f:
         return f.read()
 
-
-def ask_question(query: str) -> str:
+# --- Generate a detailed summary for the full transcript ---
+def generate_summary(language: str = "ru") -> str:
     transcript = load_transcript()
     if not transcript:
-        return "Транскрипт не найден."
+        return "Transcript not found."
 
-    prompt = (
-        "Ты — интеллектуальный ассистент, который отвечает на вопросы строго по стенограмме видео. "
-        "Используй только информацию из стенограммы. Не придумывай.\n\n"
-        f"Стенограмма:\n{transcript}\n\n"
-        f"Вопрос: {query}\n"
-        f"Ответ:"
-    )
-
-    try:
-        response = client.chat.completions.create(
-            model=MODEL_NAME,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.7,
-            max_tokens=500
+    if language == "ru":
+        prompt = (
+            "Ты — профессиональный ассистент, который анализирует полную стенограмму видео.\n"
+            "Создай подробное, связное и аккуратное summary.\n\n"
+            "Требования:\n"
+            "- Охватывай все важные темы и идеи\n"
+            "- Пиши в кратком и структурированном стиле\n"
+            "- Без воды и повторов\n"
+            "- Длина: 15–25 предложений\n"
+            "- Пиши на русском языке\n\n"
+            f"Текст стенограммы:\n{transcript}\n\n"
+            "Summary:"
         )
-        return response.choices[0].message.content.strip()
-    except Exception as e:
-        print(f"Ошибка Together API: {e}")
-        return "Ошибка при генерации ответа от модели."
+    elif language == "en":
+        prompt = (
+            "You are a professional assistant analyzing a full video transcript.\n"
+            "Create a detailed, coherent, and structured summary.\n\n"
+            "Requirements:\n"
+            "- Cover all important topics and ideas\n"
+            "- Write clearly and concisely\n"
+            "- Avoid repetitions and unnecessary filler\n"
+            "- Length: 15–25 sentences\n"
+            "- Write in English\n\n"
+            f"Transcript:\n{transcript}\n\n"
+            "Summary:"
+        )
+    else:
+        return "Unsupported language."
+
+    return gemini_generate(prompt)
 
 
-def generate_summary() -> str:
+# --- Answer a user question based on the transcript ---
+def ask_question(query: str, language: str = "ru") -> str:
     transcript = load_transcript()
     if not transcript:
-        return "Транскрипт не найден."
+        return "Transcript not found."
 
-    prompt = (
-        "Ты — интеллектуальный ассистент. Проанализируй стенограмму видео и составь краткое, логичное и информативное summary на русском языке. "
-        "Не пересказывай всё дословно. Сконцентрируйся на ключевых идеях, важных терминах и выводах. Используй простой, но деловой стиль изложения.\n\n"
-        f"Стенограмма:\n{transcript}\n\n"
-        "Summary:"
-    )
-
-    try:
-        response = client.chat.completions.create(
-            model=MODEL_NAME,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.7,
-            max_tokens=1000
+    if language == "ru":
+        prompt = (
+            "Ты — интеллектуальный ассистент, который отвечает на вопросы строго по стенограмме видео.\n"
+            "Только используй факты из текста стенограммы, не придумывай.\n\n"
+            f"Стенограмма:\n{transcript}\n\n"
+            f"Вопрос: {query}\nОтвет:"
         )
-        return response.choices[0].message.content.strip()
-    except Exception as e:
-        print(f"Ошибка Together API: {e}")
-        return "Ошибка при генерации summary."
-
-
-def generate_timestamps(transcript: str = None) -> List[str]:
-    if transcript is None:
-        transcript = load_transcript()
-    if not transcript:
-        return ["Транскрипт не найден."]
-
-    paragraphs = transcript.split("\n")
-    timestamps = []
-    for i, para in enumerate(paragraphs):
-        if para.strip():
-            timestamps.append(f"{i*30:02d}:00 — {para.strip()[:100]}...")
-
-    return timestamps
-
-
-def generate_structured_subtitles(transcript: str = None) -> str:
-    if transcript is None:
-        transcript = load_transcript()
-    if not transcript:
-        return "Транскрипт не найден."
-
-    prompt = (
-        "Раздели следующую стенограмму видео на смысловые блоки. Для каждого блока:\n"
-        "- Придумай заголовок\n"
-        "- Придумай примерный таймкод (можно использовать 00:00, 00:30, 01:00 и т.п.)\n"
-        "- Приведи 2–3 коротких факта или ключевых идеи в виде маркеров\n\n"
-        f"Стенограмма:\n{transcript}\n\n"
-        "Сформатируй ответ так:\n"
-        "00:00 Заголовок\n"
-        "- факт 1\n"
-        "- факт 2\n"
-        "- факт 3\n\n"
-        "Ответ:"
-    )
-
-    try:
-        response = client.chat.completions.create(
-            model=MODEL_NAME,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.5,
-            max_tokens=1200
+    elif language == "en":
+        prompt = (
+            "You are an intelligent assistant answering questions strictly based on the provided transcript.\n"
+            "Only use facts from the transcript, do not invent anything.\n\n"
+            f"Transcript:\n{transcript}\n\n"
+            f"Question: {query}\nAnswer:"
         )
-        return response.choices[0].message.content.strip()
-    except Exception as e:
-        print(f"Ошибка Together API: {e}")
-        return "Ошибка при генерации смысловых субтитров."
+    else:
+        return "Unsupported language."
+
+    return gemini_generate(prompt)
