@@ -1,10 +1,11 @@
 import os
 import glob
 import subprocess
+import uuid
 from yt_dlp import YoutubeDL
 from yt_dlp.utils import DownloadError
 
-# --- Download video with a progress bar (for full pipeline) ---
+# Show progress in terminal
 def progress_hook(d):
     if d['status'] == 'downloading':
         percent = d.get('_percent_str', '').strip()
@@ -14,10 +15,8 @@ def progress_hook(d):
     elif d['status'] == 'finished':
         print('')
 
+# Download single stream with specific format
 def download_with_progress(url, outtmpl, format_code):
-    """
-    Download video or audio with a progress bar using yt-dlp.
-    """
     ydl_opts = {
         'format': format_code,
         'outtmpl': outtmpl,
@@ -34,85 +33,96 @@ def download_with_progress(url, outtmpl, format_code):
             print(f"❌ Download error: {e}")
             return None
 
-# --- Merge video and audio into one mp4 file ---
-def merge_video_audio(video_file, audio_file, output_file="download_video.mp4", use_gpu=True):
-    """
-    Merge separate video and audio files into a single MP4 file using ffmpeg.
-    """
-    video_codec = "h264_nvenc" if use_gpu else "libx264"
-    
+# Merge video and audio into one file
+def merge_video_audio(video_file, audio_file, output_file, use_gpu=False):
     command = [
         "ffmpeg", "-y",
         "-i", video_file,
         "-i", audio_file,
-        "-c:v", video_codec,
-        "-preset", "fast",
+        "-c:v", "copy",
         "-c:a", "aac",
         "-b:a", "192k",
         "-movflags", "+faststart",
-        output_file  
+        output_file
     ]
-    
+
     result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-    
+
     if result.returncode != 0:
-        print(f"❌ Merge error:\n{result.stderr}")
+        print("❌ Merge error:")
+        print(result.stderr)
     else:
+        print(f"✅ Merge complete: {output_file}")
         cleanup_temp_files()
 
-# --- Clean up temporary downloaded files ---
+# Clean up temporary audio/video files
 def cleanup_temp_files():
-    """
-    Delete temporary files like video.* and audio.* after merging.
-    """
     for file in glob.glob("video.*") + glob.glob("audio.*"):
         try:
             os.remove(file)
         except Exception as e:
-            print(f"⚠️ Could not delete {file}: {e}")
+            print(f"⚠️ Could not remove {file}: {e}")
 
-# --- Full pipeline: download best video + audio and merge them ---
-def run_pipeline(url):
-    """
-    Full pipeline: download best available video+audio separately and merge into MP4.
-    """
-    video_file = download_with_progress(url, 'video.%(ext)s', 'bestvideo[ext=mp4]')
-    audio_file = download_with_progress(url, 'audio.%(ext)s', 'bestaudio[ext=m4a]')
-
-    if video_file and audio_file:
-        merge_video_audio(video_file, audio_file)
-    else:
-        print("❌ Failed to download video or audio")
-
-# --- Get available video formats (for user to choose) ---
+# Show available formats for user selection 
 def get_available_formats(url: str):
-    """
-    Return available video formats (with resolution and size) for selection.
-    """
     ydl_opts = {'quiet': True, 'skip_download': True}
     with YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=False)
-        formats = []
-        for fmt in info.get('formats', []):
-            if fmt.get('vcodec', 'none') != 'none' and fmt.get('acodec', 'none') != 'none':
-                formats.append({
-                    'format_id': fmt['format_id'],
-                    'resolution': fmt.get('format_note') or f"{fmt.get('height', '?')}p",
-                    'filesize': fmt.get('filesize') or 0
-                })
-        return formats
+        all_formats = []
 
-# --- Download video by chosen format ID (for Telegram bot) ---
-def download_video_by_format(url: str, format_id: str, output_path="downloaded_video.mp4"):
-    """
-    Download the specific video format chosen by the user.
-    """
-    ydl_opts = {
-        'format': format_id,
-        'outtmpl': output_path,
-        'noplaylist': True,
-        'quiet': True,
-        'merge_output_format': 'mp4',
-    }
-    with YoutubeDL(ydl_opts) as ydl:
-        ydl.download([url])
+        for fmt in info.get("formats", []):
+            if (
+                fmt.get("vcodec") != "none" and
+                fmt.get("ext") == "mp4" and
+                fmt.get("height", 0) >= 480
+            ):
+                filesize = fmt.get("filesize") or fmt.get("filesize_approx")
+                size_mb = (filesize / (1024 * 1024)) if filesize else 0
+
+                all_formats.append({
+                    "format_id": fmt["format_id"],
+                    "resolution": f"{fmt.get('height', '?')}p",
+                    "height": fmt.get("height", 0),
+                    "filesize": size_mb
+                })
+
+        if not all_formats:
+            return []
+
+        # --- Группируем по разрешению: оставляем самый лёгкий файл в каждой группе
+        best_formats = {}
+        for fmt in all_formats:
+            res = fmt["height"]  # Например, 480, 720, 1080
+            if res not in best_formats:
+                best_formats[res] = fmt
+            else:
+                if fmt["filesize"] and fmt["filesize"] < best_formats[res]["filesize"]:
+                    best_formats[res] = fmt
+
+        # Сортируем по разрешению по возрастанию (сначала 480p, потом 720p и т.д.)
+        sorted_formats = sorted(best_formats.values(), key=lambda x: x["height"])
+
+        return [
+            {
+                "format_id": f["format_id"],
+                "resolution": f"{f['height']}p",
+                "filesize": f["filesize"]
+            }
+            for f in sorted_formats
+        ]
+
+
+# Download video and audio, then merge
+def run_pipeline(url, format_id):
+    unique_id = str(uuid.uuid4())[:8]
+    output_filename = f"downloaded_video_{unique_id}.mp4"
+
+    video_file = download_with_progress(url, "video.%(ext)s", format_id)
+    audio_file = download_with_progress(url, "audio.%(ext)s", "bestaudio[ext=m4a]")
+
+    if video_file and audio_file:
+        merge_video_audio(video_file, audio_file, output_file=output_filename, use_gpu=False)
+        return output_filename
+    else:
+        print("❌ Не удалось скачать видео или аудио.")
+        return None
