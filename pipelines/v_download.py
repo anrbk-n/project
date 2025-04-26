@@ -64,6 +64,17 @@ def cleanup_temp_files():
             print(f"⚠️ Could not remove {file}: {e}")
 
 # Show available formats for user selection 
+def approximate_resolution(height: int) -> str:
+    """Нормализация высоты в стандартные 480p, 720p, 1080p"""
+    if height <= 480:
+        return "480p"
+    elif height <= 720:
+        return "720p"
+    elif height <= 1080:
+        return "1080p"
+    else:
+        return f"{height}p"  
+
 def get_available_formats(url: str):
     ydl_opts = {'quiet': True, 'skip_download': True}
     with YoutubeDL(ydl_opts) as ydl:
@@ -74,38 +85,39 @@ def get_available_formats(url: str):
             if (
                 fmt.get("vcodec") != "none" and
                 fmt.get("ext") == "mp4" and
-                fmt.get("height", 0) >= 480
+                fmt.get("height", 0) >= 360  #
             ):
                 filesize = fmt.get("filesize") or fmt.get("filesize_approx")
                 size_mb = (filesize / (1024 * 1024)) if filesize else 0
 
+                height = fmt.get("height", 0)
+                resolution = approximate_resolution(height)
+
                 all_formats.append({
                     "format_id": fmt["format_id"],
-                    "resolution": f"{fmt.get('height', '?')}p",
-                    "height": fmt.get("height", 0),
+                    "resolution": resolution,
+                    "height": height,
                     "filesize": size_mb
                 })
 
         if not all_formats:
             return []
 
-        # --- Группируем по разрешению: оставляем самый лёгкий файл в каждой группе
         best_formats = {}
         for fmt in all_formats:
-            res = fmt["height"]  # Например, 480, 720, 1080
+            res = fmt["resolution"]
             if res not in best_formats:
                 best_formats[res] = fmt
             else:
                 if fmt["filesize"] and fmt["filesize"] < best_formats[res]["filesize"]:
                     best_formats[res] = fmt
 
-        # Сортируем по разрешению по возрастанию (сначала 480p, потом 720p и т.д.)
-        sorted_formats = sorted(best_formats.values(), key=lambda x: x["height"])
+        sorted_formats = sorted(best_formats.values(), key=lambda x: int(x["resolution"].replace('p', '')))
 
         return [
             {
                 "format_id": f["format_id"],
-                "resolution": f"{f['height']}p",
+                "resolution": f["resolution"],
                 "filesize": f["filesize"]
             }
             for f in sorted_formats
