@@ -1,45 +1,22 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ language }}">
 <head>
     <meta charset="UTF-8">
-    <title>YouTube Assistant</title>
+    <title>{{ translations.title }}</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
     <div class="container fade-in">
-        <h1>🎬 YouTube Assistant</h1>
+        <h1>🎬 {{ translations.title }}</h1>
 
         {% if error %}
-            <div class="error">❌ Failed to get subtitles. Please try again.</div>
+            <div class="error">{{ translations.error_message }}</div>
         {% endif %}
 
         <form method="post" action="/process">
-            <input type="text" name="url" placeholder="Enter YouTube URL..." required>
-            <button type="submit">Analyze</button>
+            <input type="text" name="url" placeholder="{{ translations.input_placeholder }}" required>
+            <button type="submit">{{ translations.analyze_button }}</button>
         </form>
     </div>
 </body>
 </html>
-<script>
-    const languageToggle = document.getElementById('language-toggle');
-    const languageMenu = document.getElementById('language-menu');
-    
-    languageToggle.addEventListener('click', () => {
-        languageMenu.classList.toggle('show');
-    });
-
-    const urlParams = new URLSearchParams(window.location.search);
-    const lang = urlParams.get('lang');
-    
-    const savedLanguage = localStorage.getItem('language');
-    if (lang && lang !== savedLanguage) {
-        localStorage.setItem('language', lang);
-        location.reload(); 
-    }
-
-    if (savedLanguage) {
-        document.documentElement.lang = savedLanguage;
-    }
-</script>
-
-
