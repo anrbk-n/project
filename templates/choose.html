@@ -1,33 +1,23 @@
 <!DOCTYPE html>
-<html lang="{{ language }}">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>{{ translations.title }}</title>
+    <title>YouTube Assistant</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
     <div class="container fade-in">
-        <h1>{{ translations.choose_action }}</h1>
-        <button id="download-btn" class="btn">📥 {{ translations.download_button }}</button>
-        <a href="/ask" class="btn">❓ {{ translations.ask_button }}</a>
+        <h1>✅ What would you like to do?</h1>
+        <button id="download-btn" class="btn">📥 Download Video</button>
+        <a href="/ask" class="btn">❓ Ask a Question</a>
 
         <div id="loading" style="margin-top: 20px; display: none;">
             <div class="spinner"></div>
-            <div id="progress-text" style="margin-top: 10px;">{{ translations.downloading_message }}</div>
+            <div id="progress-text" style="margin-top: 10px;">⏳ Downloading...</div>
         </div>
     </div>
 
-    <div id="language-toggle" class="language-toggle">
-        🌍
-    </div>
-
-    <div id="language-menu" class="language-menu">
-        <a href="?lang=ru">Русский</a>
-        <a href="?lang=en">English</a>
-    </div>
-
     <script>
-        // Логика загрузки видео
         const downloadBtn = document.getElementById('download-btn');
         const loading = document.getElementById('loading');
         const progressText = document.getElementById('progress-text');
@@ -39,7 +29,7 @@
             const total = data.total_bytes || 1;
             const percent = ((downloaded / total) * 100).toFixed(1);
 
-            progressText.innerText = `⏳ {{ translations.downloading_message }} ${(downloaded/1e6).toFixed(2)}MB / ${(total/1e6).toFixed(2)}MB (${percent}%)`;
+            progressText.innerText = `Processing the video: ${(downloaded/1e6).toFixed(2)}MB / ${(total/1e6).toFixed(2)}MB (${percent}%)`;
 
             if (percent >= 100) {
                 window.location.href = "/watch";
@@ -59,26 +49,6 @@
                 setTimeout(checkProgress, 2000);
             }
         });
-
-        const languageToggle = document.getElementById('language-toggle');
-        const languageMenu = document.getElementById('language-menu');
-
-        languageToggle.addEventListener('click', () => {
-            languageMenu.classList.toggle('show');
-        });
-
-        const urlParams = new URLSearchParams(window.location.search);
-        const lang = urlParams.get('lang');
-        const savedLanguage = localStorage.getItem('language');
-
-        if (lang && lang !== savedLanguage) {
-            localStorage.setItem('language', lang);
-            location.href = window.location.pathname; 
-        }
-
-        if (savedLanguage && !lang) {
-            window.location.search = `?lang=${savedLanguage}`;
-        }
     </script>
 </body>
 </html>
