@@ -16,3 +16,5 @@ pipelines/__pycache__/keyboards.cpython-312.pyc
 pipelines/__pycache__/s3.cpython-312.pyc
 pipelines/__pycache__/utils.cpython-312.pyc
 pipelines/__pycache__/video_uploader.cpython-312.pyc
+pipelines/.env
+.env
