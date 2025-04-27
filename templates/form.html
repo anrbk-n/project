@@ -1,22 +1,23 @@
 <!DOCTYPE html>
-<html lang="{{ language }}">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>{{ translations.title }}</title>
+    <title>YouTube Assistant</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
     <div class="container fade-in">
-        <h1>🎬 {{ translations.title }}</h1>
+        <h1>🎬 YouTube Assistant</h1>
 
         {% if error %}
-            <div class="error">{{ translations.error_message }}</div>
+            <div class="error">❌ Failed to get subtitles. Please try again.</div>
         {% endif %}
 
         <form method="post" action="/process">
-            <input type="text" name="url" placeholder="{{ translations.input_placeholder }}" required>
-            <button type="submit">{{ translations.analyze_button }}</button>
+            <input type="text" name="url" placeholder="Enter YouTube URL..." required>
+            <button type="submit">Analyze</button>
         </form>
     </div>
 </body>
 </html>
+
