@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Ask a Question</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <a href="/choose" class="back-btn">↩️ Back</a>
+
+    <div class="container fade-in">
+        <h1>❓ Ask a Question</h1>
+
+        <form id="ask-form">
+            <input type="text" id="question" name="question" placeholder="Type your question..." required>
+            <button type="submit">Ask</button>
+            <button type="button" id="clear-btn" class="btn">🗑️ Clear Chat</button>
+        </form>
+
+        <div id="dialogue" class="dialogue">
+            {% for q, a in dialogue %}
+                <div class="qa-block">
+                    <p><strong>Q:</strong> {{ q }}</p>
+                    <p><strong>A:</strong> {{ a }}</p>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('ask-form');
+        const dialogue = document.getElementById('dialogue');
+        const clearBtn = document.getElementById('clear-btn');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const question = document.getElementById('question').value.trim();
+            if (!question) return;
+
+            const formData = new FormData();
+            formData.append('question', question);
+
+            const response = await fetch('/ask', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.ok) {
+                const html = await response.text();
+                const temp = document.createElement('div');
+                temp.innerHTML = html;
+
+                const newBlocks = temp.querySelectorAll('.qa-block');
+
+                dialogue.innerHTML = '';
+                newBlocks.forEach(block => {
+                    dialogue.appendChild(block);
+                });
+
+                document.getElementById('question').value = '';
+            } else {
+                alert('Error sending question!');
+            }
+        });
+
+        clearBtn.addEventListener('click', async () => {
+            const response = await fetch('/clear_chat', { method: 'POST' });
+
+            if (response.ok) {
+                dialogue.innerHTML = '<div class="qa-block"><p>✅ Chat cleared.</p></div>';
+            } else {
+                alert('Error clearing chat!');
+            }
+        });
+    </script>
+</body>
+</html>

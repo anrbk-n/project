@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Choose Action</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container fade-in">
+        <h1>✅ What would you like to do?</h1>
+        <button id="download-btn" class="btn">📥 Download Video</button>
+        <a href="/ask" class="btn">❓ Ask a Question</a>
+
+        <div id="loading" style="margin-top: 20px; display: none;">
+            <div class="spinner"></div>
+            <div id="progress-text" style="margin-top: 10px;">Preparing download...</div>
+        </div>
+    </div>
+
+    <div id="language-toggle" class="language-toggle">
+        <span>🌍</span>
+    </div>
+
+    <div id="language-menu" class="language-menu" style="display: none;">
+        <a href="?lang=ru">Русский</a>
+        <a href="?lang=en">English</a>
+    </div>
+
+    <script>
+        const downloadBtn = document.getElementById('download-btn');
+        const loading = document.getElementById('loading');
+        const progressText = document.getElementById('progress-text');
+        
+        async function checkProgress() {
+            const response = await fetch('/progress');
+            const data = await response.json();
+
+            const downloaded = data.downloaded_bytes || 0;
+            const total = data.total_bytes || 1;
+            const percent = ((downloaded / total) * 100).toFixed(1);
+
+            progressText.innerText = `⏳ Downloading: ${(downloaded/1e6).toFixed(2)}MB / ${(total/1e6).toFixed(2)}MB (${percent}%)`;
+
+            if (percent >= 100) {
+                window.location.href = "/watch";
+            } else {
+                setTimeout(checkProgress, 2000);
+            }
+        }
+
+        downloadBtn.addEventListener('click', async () => {
+            loading.style.display = 'block';
+            downloadBtn.disabled = true;
+
+            const response = await fetch('/download');
+            if (response.redirected) {
+                window.location.href = response.url;
+            } else {
+                setTimeout(checkProgress, 2000);
+            }
+        });
+
+        const languageToggle = document.getElementById('language-toggle');
+        const languageMenu = document.getElementById('language-menu');
+        
+        languageToggle.addEventListener('click', () => {
+            languageMenu.style.display = languageMenu.style.display === 'block' ? 'none' : 'block';
+        });
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const lang = urlParams.get('lang');
+        if (lang) {
+            localStorage.setItem('language', lang);
+            location.reload(); 
+        }
+
+        const savedLanguage = localStorage.getItem('language');
+        if (savedLanguage) {
+            document.documentElement.lang = savedLanguage;
+        }
+    </script>
+</body>
+</html>
